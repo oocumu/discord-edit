@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#25262d">
 <meta name="description" content="음성 채팅방 화면에 한마디 말풍선을 붙여 이미지로 저장하는 도구">
-<meta property="og:title" content="한마디 방">
+<meta property="og:title" content="디스코드 에디터">
 <meta property="og:description" content="음성 채팅방 화면에 한마디 말풍선을 붙여 이미지로 저장하는 도구">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%AC%3C/text%3E%3C/svg%3E">
@@ -17,9 +17,9 @@
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-apple-system,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
-.app{position:relative;flex:none;margin:0 auto;background:var(--sheet);overflow:hidden}
-.scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:0 18px;scrollbar-width:thin;scrollbar-color:#4a4c55 transparent;overscroll-behavior:contain}
-.scin{position:relative;min-height:100%;padding-bottom:28px}
+.fit{position:relative;flex:none}
+.app{position:absolute;left:0;top:0;transform-origin:0 0;background:var(--sheet);overflow:hidden}
+.scin{position:absolute;top:0;padding:0 18px 28px;box-sizing:border-box}
 .main{display:flex;flex-direction:column}
 .sticks{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 .stk{position:absolute;pointer-events:auto;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
@@ -108,7 +108,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 <body>
 <div class="shell">
 <aside class="panel" id="panel">
-  <h1>💬 한마디 방 에디터</h1>
+  <h1>디스코드 에디터</h1>
   <section class="sec">
     <h2>인원 · 말풍선</h2>
     <div class="opts">
@@ -162,17 +162,17 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
   </section>
 </aside>
 <main class="stage" id="stage">
-<div class="app" id="app">
-  <div class="scroll" id="scroll"><div class="scin" id="scin">
+<div class="fit" id="fit"><div class="app" id="app">
+  <div class="scin" id="scin">
     <div class="main">
       <div class="bar"><button class="ib">⌄</button></div>
       <div class="lbl">방송 중이에요…</div>
       <div class="stream" id="stream"><div class="join">방송 보기</div></div>
     </div>
     <div class="list" id="list"></div>
-  </div></div>
+  </div>
   <div class="sticks" id="sticks"></div>
-</div>
+</div></div>
 </main>
 </div>
 <script>
@@ -182,7 +182,8 @@ const colors=['#3b82f6','#eb459e','#f0b132','#23a55a','#ed4245','#8b5cf6'];
 const color=s=>colors[[...s].reduce((a,c)=>a+c.charCodeAt(0),0)%colors.length];
 const idOf=n=>'u_'+[...n].map(c=>c.charCodeAt(0).toString(36)).join('_');
 const RATIOS={orig:null,'1:1':1,'3:4':3/4,'4:5':4/5,'9:16':9/16,'16:9':16/9};
-let outScale=2;
+let outScale=2,vs=1;   // vs: 화면에 맞추려고 미리보기를 줄인 배율
+const CW=400;          // 내용(방송 화면+목록)의 고정 너비
 const TAIL='<img class="btail" alt="" draggable="false">';
 const TPL='{닉네임} 님이 입력중...';
 function setSys(el,name){el.textContent='';TPL.split('{닉네임}').forEach((p,i)=>{if(i){const b=document.createElement('b');b.textContent=name;el.appendChild(b)}el.appendChild(document.createTextNode(p))})}
@@ -391,24 +392,30 @@ function fit(d){
   }
   l.style.marginTop=m+'px';
 }
-/* 미리보기 화면 크기: 선택한 비율 그대로 (저장 결과와 동일한 레이아웃) */
+/* 내용은 그대로 두고 '배경 프레임'만 선택한 비율로 만든다. 프레임은 항상 내용 전체를 포함하고, 화면에 안 들어가면 통째로 줄여서 보여준다 */
 function layoutApp(){
-  const st=$('stage'),app=$('app'),cs=getComputedStyle(st);
+  const st=$('stage'),app=$('app'),box=$('fit'),sin=$('scin'),cs=getComputedStyle(st);
   const aw=st.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
   const ah=st.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
   if(aw<80||ah<80)return;
+  sin.style.width=CW+'px';
+  const CH=Math.ceil(sin.offsetHeight);
   const r=RATIOS[ratio];
-  let w,h;
-  if(!r){w=Math.min(400,aw);h=Math.min(ah,860)}
-  else{const cap=r>1?720:400;w=Math.min(cap,aw,ah*r);h=w/r}
-  app.style.width=Math.floor(w)+'px';app.style.height=Math.floor(h)+'px';
+  let FW=CW,FH=Math.max(CH,480);
+  if(r){FW=Math.max(CW,Math.ceil(CH*r));FH=Math.ceil(FW/r)}
+  sin.style.left=Math.round((FW-CW)/2)+'px';
+  app.style.width=FW+'px';app.style.height=FH+'px';
+  vs=Math.min(1,aw/FW,ah/FH);
+  app.style.transform='scale('+vs+')';
+  box.style.width=Math.round(FW*vs)+'px';box.style.height=Math.round(FH*vs)+'px';
   updateOut();
 }
+function relayout(){fit();layoutApp()}
 function updateOut(){
   const a=$('app');
   $('outsz').textContent='저장 크기: '+Math.round(parseFloat(a.style.width)*outScale)+' × '+Math.round(parseFloat(a.style.height)*outScale)+' px';
 }
-const ro=window.ResizeObserver?new ResizeObserver(()=>fit()):null;
+const ro=window.ResizeObserver?new ResizeObserver(()=>relayout()):null;
 const observed=new WeakSet();
 
 function render(){
@@ -424,12 +431,12 @@ function render(){
   meRow._sync();gRows.forEach(r=>r._sync());
   padFirst(document);
   if(ro)[...l.children].forEach(r=>{if(!observed.has(r)){observed.add(r);ro.observe(r)}});
-  requestAnimationFrame(()=>fit());
+  requestAnimationFrame(()=>relayout());
 }
 layoutApp();
 render();
-window.addEventListener('resize',()=>{layoutApp();fit()});
-if(window.ResizeObserver)new ResizeObserver(()=>{layoutApp();fit()}).observe($('stage'));
+window.addEventListener('resize',()=>relayout());
+if(window.ResizeObserver){const o=new ResizeObserver(()=>relayout());o.observe($('stage'));o.observe($('scin'))}
 (async()=>{
   try{
     if(!rt)throw 0;
@@ -446,7 +453,7 @@ const T=$('tune');
 setIdle();
 const rowByKey=k=>[...$('list').children].find(r=>r._key===k);
 const fmt={rot:v=>(+v).toFixed(1)+'°',tx:v=>Math.round(v)+'%',ts:v=>Math.round(v*100)+'%',tk:v=>Math.round(v)+'°'};
-function setIdle(){T.classList.add('idle');$('t_name').textContent='말풍선을 눌러 선택하세요'}
+function setIdle(){T.classList.add('idle');$('t_name').textContent='말풍선을 선택하세요'}
 function syncTune(){
   const r=rowByKey(selKey),b=r&&r.querySelector('.bub'),e=b&&b._eff;
   if(!e){setIdle();return}
@@ -517,7 +524,7 @@ const stkOf=id=>stickers.find(s=>s.id===id);
 function syncStk(){
   const s=stkOf(selStk),c=$('stkctl');
   c.classList.toggle('idle',!s);
-  $('s_name').textContent=s?'선택한 스티커':'스티커를 눌러 선택하세요';
+  $('s_name').textContent=s?'선택한 스티커':'스티커를 선택하세요';
   if(!s)return;
   $('s_w').value=Math.round(s.w*100);$('so_w').textContent=Math.round(s.w*100)+'%';
   $('s_rot').value=s.rot;$('so_rot').textContent=Math.round(s.rot)+'°';
@@ -602,7 +609,7 @@ window.addEventListener('pointermove',e=>{
   const R=drag.R,L=drag.L;
   const cx=Math.max(L.left-R.left,Math.min(L.right-R.right,dx));
   const cy=Math.max(L.top-R.top,Math.min(L.bottom-R.bottom,dy));
-  offs[drag.r._key]=[Math.round(drag.o[0]+cx),Math.round(drag.o[1]+cy)];
+  offs[drag.r._key]=[Math.round(drag.o[0]+cx/vs),Math.round(drag.o[1]+cy/vs)];
   applyT(drag.b,drag.r._key,drag.b._rot||0);
 });
 function endDrag(e){
@@ -666,7 +673,7 @@ $('clear').onclick=()=>{img=null;blurUrl=null;applyBg()};
 $('blurchk').onchange=applyBg;
 
 /* PNG 저장 */
-$('chips').onclick=e=>{const b=e.target.closest('button');if(!b)return;ratio=b.dataset.r;[...$('chips').children].forEach(x=>x.classList.toggle('on',x===b));layoutApp();fit()};
+$('chips').onclick=e=>{const b=e.target.closest('button');if(!b)return;ratio=b.dataset.r;[...$('chips').children].forEach(x=>x.classList.toggle('on',x===b));relayout()};
 $('schips').onclick=e=>{const b=e.target.closest('button');if(!b)return;outScale=+b.dataset.s;[...$('schips').children].forEach(x=>x.classList.toggle('on',x===b));updateOut()};
 async function saveBlob(blob,filename){
   if(dl){
@@ -687,19 +694,18 @@ $('save').onclick=async()=>{
   const msg=$('msg'),btn=$('save');
   if(!window.html2canvas){msg.textContent='이미지 변환 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요';return}
   btn.disabled=true;msg.textContent='이미지 만드는 중…';
-  const scrollTop=$('scroll').scrollTop;
   try{
     if(document.fonts&&document.fonts.ready)await document.fonts.ready;
     const canvas=await html2canvas($('app'),{scale:outScale,backgroundColor:'#25262d',useCORS:true,logging:false,onclone:doc=>{
       // 패널을 뺀 뒤 미리보기 화면만 왼쪽 위에 두고, 화면과 같은 크기·같은 스크롤 위치로 그린다
-      const pn=doc.getElementById('panel'),sh=doc.querySelector('.shell'),sg=doc.getElementById('stage');
+      const pn=doc.getElementById('panel'),sh=doc.querySelector('.shell'),sg=doc.getElementById('stage'),bx=doc.getElementById('fit');
       if(pn)pn.remove();
       if(sh){sh.style.display='block';sh.style.height='auto'}
       if(sg){sg.style.cssText='padding:0;display:block;height:auto;position:static;background:transparent;overflow:visible'}
       doc.documentElement.style.height='auto';doc.body.style.height='auto';
-      const a=doc.getElementById('app');a.style.margin='0';a.classList.add('exp-mode');
-      const sc=doc.getElementById('scroll'),sin=doc.getElementById('scin');
-      sc.style.overflow='hidden';sin.style.transform='translateY('+(-scrollTop)+'px)';
+      const a=doc.getElementById('app');a.classList.add('exp-mode');
+      a.style.transform='none';a.style.position='relative';   // 화면 맞춤용 축소 해제 → 실제 크기로 저장
+      if(bx){bx.style.cssText='position:static;width:auto;height:auto'}
       doc.querySelectorAll('.no-export').forEach(x=>x.remove());
       doc.querySelectorAll('.bub.empty').forEach(x=>{const w=x.closest('.bw');if(w)w.style.display='none';else x.remove()});
       doc.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
