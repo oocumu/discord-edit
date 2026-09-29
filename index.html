@@ -27,7 +27,9 @@ html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-
 .stk.sel{outline:2px dashed var(--pri);outline-offset:3px}
 .lbl2{font-size:11px;color:var(--mute);margin:2px 0 6px}
 .outsz{font-size:12px;color:var(--mute);margin:0 0 10px}
-.bar{padding:14px 0 0}
+.bar{padding:14px 0 0;display:flex;align-items:center;gap:10px}
+.rn{font-weight:700;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rninp{flex:1;min-width:0;border:0;border-radius:10px;background:var(--card);color:var(--txt);font:inherit;font-size:13px;padding:7px 11px;outline:0}
 .ib{width:38px;height:38px;border-radius:50%;background:#3a3c45;display:grid;place-items:center;font-size:15px;border:0;color:var(--txt)}
 .lbl{color:var(--mute);font-size:14px;margin:14px 0 8px}
 .stream{aspect-ratio:16/9;border-radius:18px;background:linear-gradient(160deg,#e58fc0,#a56bd8);background-size:cover;background-position:center;display:grid;place-items:center}
@@ -110,6 +112,13 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 <aside class="panel" id="panel">
   <h1>디스코드 에디터</h1>
   <section class="sec">
+  <h2>방 이름</h2>
+  <div class="opts">
+    <label><input type="checkbox" id="rnchk"> 표시</label>
+    <input class="rninp" id="rninput" maxlength="20" placeholder="방 이름 입력">
+  </div>
+</section>
+  <section class="sec">
     <h2>인원 · 말풍선</h2>
     <div class="opts">
       <button class="sm" id="addp">＋ 인원 추가</button>
@@ -165,7 +174,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 <div class="fit" id="fit"><div class="app" id="app">
   <div class="scin" id="scin">
     <div class="main">
-      <div class="bar"><button class="ib">⌄</button></div>
+      <div class="bar"><button class="ib">⌄</button><span class="rn" id="rname" style="display:none"></span></div>
       <div class="lbl">방송 중이에요…</div>
       <div class="stream" id="stream"><div class="join">방송 보기</div></div>
     </div>
@@ -624,6 +633,21 @@ window.addEventListener('pointerup',endDrag);
 window.addEventListener('pointercancel',endDrag);
 $('resetpos').onclick=()=>{offs={};saveOffs();place()};
 
+/* 방 이름 (화살표 옆) */
+let rn={on:false,name:''};
+try{Object.assign(rn,JSON.parse(localStorage.getItem('hm_rn')||'{}'))}catch(e){}
+function applyRn(){
+  const el=$('rname');
+  el.textContent=rn.name;
+  el.style.display=(rn.on&&rn.name.trim())?'':'none';
+  try{localStorage.setItem('hm_rn',JSON.stringify(rn))}catch(e){}
+}
+$('rnchk').checked=rn.on;
+$('rninput').value=rn.name;
+$('rnchk').onchange=e=>{rn.on=e.target.checked;applyRn()};
+$('rninput').oninput=e=>{rn.name=e.target.value;applyRn()};
+applyRn();
+  
 /* 옵션 */
 let img=null,blurUrl=null;
 function blurPass(a,b,w,h,r,horiz){
