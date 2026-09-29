@@ -175,7 +175,13 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
   <div class="scin" id="scin">
     <div class="main">
       <div class="bar"><button class="ib">⌄</button><span class="rn" id="rname" style="display:none"></span></div>
-      <div class="lbl">방송 중이에요…</div>
+      <section class="sec">
+  <h2>상태 문구</h2>
+  <div class="opts">
+    <input class="rninp" id="stinput" maxlength="30" placeholder="방송 중이에요">
+    <button class="sm" id="streset">기본값</button>
+  </div>
+</section>
       <div class="stream" id="stream"><div class="join">방송 보기</div></div>
     </div>
     <div class="list" id="list"></div>
@@ -647,6 +653,20 @@ $('rninput').value=rn.name;
 $('rnchk').onchange=e=>{rn.on=e.target.checked;applyRn()};
 $('rninput').oninput=e=>{rn.name=e.target.value;applyRn()};
 applyRn();
+
+/* 상태 문구 ("방송 중이에요" + 항상 …) */
+const ST_DEFAULT='방송 중이에요';
+let stText=ST_DEFAULT;
+try{const v=localStorage.getItem('hm_st2');if(v!==null)stText=v}catch(e){}
+function applySt(){
+  const t=stText.replace(/[….]+$/,'').trim();   // 사용자가 직접 쓴 …, . 은 제거해서 중복 방지
+  $('stlabel').textContent=t?t+'…':'';
+  try{localStorage.setItem('hm_st2',stText)}catch(e){}
+}
+$('stinput').value=stText;
+$('stinput').oninput=e=>{stText=e.target.value;applySt()};
+$('streset').onclick=()=>{stText=ST_DEFAULT;$('stinput').value=stText;applySt()};
+applySt();
   
 /* 옵션 */
 let img=null,blurUrl=null;
@@ -672,8 +692,8 @@ function makeBlur(im){
   const id=x.getImageData(0,0,w,h),n=w*h*4;
   let A=new Float32Array(n),B=new Float32Array(n);
   for(let i=0;i<n;i++)A[i]=id.data[i];
-  const r=Math.max(2,Math.round(Math.min(w,h)*.05));
-  for(let k=0;k<3;k++){blurPass(A,B,w,h,r,true);blurPass(B,A,w,h,r,false)}   // 가로·세로 3회씩
+  const r=Math.max(2,Math.round(Math.min(w,h)*.025));
+  for(let k=0;k<2;k++){blurPass(A,B,w,h,r,true);blurPass(B,A,w,h,r,false)}   // 가로·세로 3회씩
   for(let i=0;i<n;i+=4){id.data[i]=A[i];id.data[i+1]=A[i+1];id.data[i+2]=A[i+2];id.data[i+3]=255}
   x.putImageData(id,0,0);
   return c.toDataURL('image/jpeg',.94);
