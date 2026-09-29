@@ -112,6 +112,21 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 /* 컨트롤 버튼: 평소엔 숨기고, 행에 마우스를 올리거나 탭/포커스할 때만 이름 위에 떠서 표시 */
 .row .ctl{display:none;z-index:8;background:#1f2026;padding:4px;border-radius:12px;box-shadow:0 4px 14px #0009}
 .row:hover .ctl,.row:focus-within .ctl,.row.act .ctl{display:flex}
+/* 접속할 때마다 뜨는 안내창 */
+#notice{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.62)}
+#notice[hidden]{display:none}
+.nbox{width:min(340px,100%);background:var(--pri);border-radius:16px;overflow:hidden;box-shadow:0 14px 44px #000b;text-align:center;color:#fff;padding:8px 0 24px}
+.nimg{margin:0 12px;border-radius:10px;aspect-ratio:16/9;display:grid;place-items:center;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d9264f' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") repeat-x 0 6px/28px 28px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23d9264f' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") repeat-x 0 calc(100% - 6px)/28px 28px,
+    #ec84c4}
+.nb{position:relative;background:#fff;color:#111;font-weight:700;font-size:15px;border-radius:20px;padding:9px 20px;box-shadow:0 3px 0 #0003,0 7px 12px #0004}
+.nb::after{content:"";position:absolute;left:22px;top:calc(100% - 2px);width:14px;height:10px;background:#fff;clip-path:polygon(0 0,100% 0,45% 100%)}
+.nbox h3{margin:16px 20px 8px;font-size:19px}
+.nbox p{margin:0 24px 18px;font-size:14px;line-height:1.55;opacity:.95}
+.nbtn{border:0;border-radius:6px;background:#fff;color:var(--pri);font:inherit;font-size:15px;font-weight:600;padding:12px 30px;cursor:pointer}
+.nbtn:hover{background:#f2f3ff}
 /* 아바타+닉네임 정렬: 왼쪽/오른쪽은 방송 화면 가장자리에 딱 맞춤 (오른쪽은 닉네임이 앞, 아바타가 끝) */
 .app[data-al=left] .row,.app[data-al=right] .row{padding-left:0;padding-right:0}
 .app[data-al=left] .row{justify-content:flex-start}
@@ -209,6 +224,18 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
   <div class="sticks" id="sticks"></div>
 </div></div>
 </main>
+</div>
+<div id="notice" role="dialog" aria-modal="true" aria-labelledby="ntitle">
+  <div class="nbox">
+    <h3 id="ntitle">디스코드 에디터 사용 안내</h3>
+    <p>상식적인 선 내에서만 사용해 주신다면 뭐든 크게 개의치 않습니다.
+      사용 문의/오류 제보에 대한 내용은 배포한 계정(@archiveanething)의 바이오 익명함으로 부탁드립니다.
+      모쪼록 좋은 하루 보내세요. (‾◡◝)
+      
+      사용 불가: 괴수 8호 호시나 소우시로 관련 ALL
+    </p>
+    <button class="nbtn" id="nok" type="button">확인했어요</button>
+  </div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -789,6 +816,7 @@ $('save').onclick=async()=>{
       a.style.transform='none';a.style.position='relative';   // 화면 맞춤용 축소 해제 → 실제 크기로 저장
       if(bx){bx.style.cssText='position:static;width:auto;height:auto'}
       doc.querySelectorAll('.no-export').forEach(x=>x.remove());
+      const nt=doc.getElementById('notice');if(nt)nt.remove();
       doc.querySelectorAll('.bub.empty').forEach(x=>{const w=x.closest('.bw');if(w)w.style.display='none';else x.remove()});
       doc.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
       doc.querySelectorAll('.nmw input').forEach(i=>{if(!i.value.trim())i.value='익명'});
@@ -805,6 +833,13 @@ $('save').onclick=async()=>{
   }
   finally{btn.disabled=false}
 };
+
+/* 안내창: 저장하지 않으므로 사이트를 새로 열 때마다 표시됨 */
+(function(){
+  const n=$('notice'),ok=$('nok');
+  ok.onclick=()=>{n.hidden=true};
+  try{ok.focus({preventScroll:true})}catch(e){}
+})();
 </script>
 </body>
 </html>
