@@ -119,6 +119,13 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
   </div>
 </section>
   <section class="sec">
+  <h2>상태 문구</h2>
+  <div class="opts">
+    <input class="rninp" id="stinput" maxlength="30" placeholder="방송 중이에요">
+    <button class="sm" id="streset">기본값</button>
+  </div>
+</section>
+  <section class="sec">
     <h2>인원 · 말풍선</h2>
     <div class="opts">
       <button class="sm" id="addp">＋ 인원 추가</button>
@@ -175,13 +182,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
   <div class="scin" id="scin">
     <div class="main">
       <div class="bar"><button class="ib">⌄</button><span class="rn" id="rname" style="display:none"></span></div>
-      <section class="sec">
-  <h2>상태 문구</h2>
-  <div class="opts">
-    <input class="rninp" id="stinput" maxlength="30" placeholder="방송 중이에요">
-    <button class="sm" id="streset">기본값</button>
-  </div>
-</section>
+      <div class="lbl" id="stlabel"></div>
       <div class="stream" id="stream"><div class="join">방송 보기</div></div>
     </div>
     <div class="list" id="list"></div>
@@ -660,7 +661,8 @@ let stText=ST_DEFAULT;
 try{const v=localStorage.getItem('hm_st2');if(v!==null)stText=v}catch(e){}
 function applySt(){
   const t=stText.replace(/[….]+$/,'').trim();   // 사용자가 직접 쓴 …, . 은 제거해서 중복 방지
-  $('stlabel').textContent=t?t+'…':'';
+  const el=$('stlabel');
+  if(el)el.textContent=t?t+'…':'';
   try{localStorage.setItem('hm_st2',stText)}catch(e){}
 }
 $('stinput').value=stText;
