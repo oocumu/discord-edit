@@ -52,6 +52,9 @@ html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-
 .grow{display:inline-grid;vertical-align:top}
 .grow>.sz{grid-area:1/1;visibility:hidden;white-space:pre-wrap;word-break:break-word;font:inherit;line-height:inherit;min-height:1.3em;overflow:hidden}
 .grow>input,.grow>textarea{grid-area:1/1;font:inherit;line-height:inherit;color:inherit;background:none;border:0;outline:0;padding:0;margin:0;width:100%;min-width:0;resize:none;overflow:hidden}
+/* 입력칸 자체의 기본 너비(약 20자)가 말풍선 길이를 밀어내지 않도록: 글자 크기에 맞춰서만 늘어남 */
+.bub.grow>textarea{width:0!important;min-width:100%!important}
+.bub{min-width:44px}
 .bw{flex:0 0 100%;display:flex;margin:0 0 18px}
 .bub{position:relative;background:#fff;color:#111;border-radius:20px;padding:9px 16px;margin-left:4px;max-width:calc(100% - 4px);box-shadow:0 3px 0 #0003,0 7px 12px #0006;font-size:14px;line-height:1.35;word-break:break-word;white-space:pre-wrap}
 .bub textarea::placeholder{color:#999}
