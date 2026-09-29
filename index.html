@@ -16,8 +16,8 @@
 :root{--sheet:#25262d;--card:#2b2d35;--txt:#f2f3f5;--mute:#9a9ea8;--line:#33353d;--pri:#5865f2;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:#000;color:var(--txt);font-family:-apple-system,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
-.app{max-width:520px;height:100%;margin:0 auto;background:var(--sheet);display:flex;flex-direction:column;padding:0 18px;overflow:hidden}
+html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-apple-system,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
+.app{width:100%;max-width:400px;height:100%;max-height:860px;flex:none;margin:0 auto;background:var(--sheet);display:flex;flex-direction:column;padding:0 18px;overflow:hidden}
 .app.wide{flex-direction:row;gap:26px;padding:20px 28px}
 .main{display:flex;flex-direction:column;flex:none}
 .app.wide .main{flex:1;min-width:0}
@@ -55,8 +55,27 @@ html,body{height:100%;margin:0;background:#000;color:var(--txt);font-family:-app
 /* 두 번째 이후: 말풍선을 아바타·닉네임 줄 아래로, 꼬리는 위쪽(프로필 방향) */
 .list>.row:not(:first-child) .bw{order:5}
 .bub.sel{outline:2px dashed var(--pri);outline-offset:4px}
-.tune{flex:1 1 100%;display:grid;grid-template-columns:auto 1fr 38px;gap:6px 10px;align-items:center;font-size:12px;color:var(--mute);background:#1c1d22;border-radius:14px;padding:10px 12px}
+.tune{display:grid;grid-template-columns:auto 1fr 38px;gap:6px 10px;align-items:center;font-size:12px;color:var(--mute);}
 .tune[hidden]{display:none}
+.tune.idle input[type=range],.tune.idle .tg{opacity:.35;pointer-events:none}
+.tune.idle #t_name{color:var(--mute);font-weight:500}
+/* 왼쪽 패널 + 오른쪽 에디터 */
+.shell{display:grid;grid-template-columns:minmax(300px,360px) 1fr;height:100%}
+.panel{min-height:0;overflow-y:auto;background:#17181c;border-right:1px solid #26272d;padding:16px 14px 28px;display:flex;flex-direction:column;gap:12px}
+.panel h1{margin:2px 2px 0;font-size:16px}
+.sec{background:#1f2026;border-radius:14px;padding:12px}
+.sec h2{margin:0 0 10px;font-size:12px;font-weight:600;color:var(--mute)}
+.panel .opts{gap:8px}
+.panel .chips{margin-bottom:10px}
+#save{width:100%}
+.stage{min-width:0;min-height:0;display:flex;justify-content:center;align-items:center;padding:20px;overflow:hidden;background:#000}
+@media (max-width:860px){
+  html,body{height:auto}
+  .shell{display:flex;flex-direction:column;height:auto}
+  .stage{order:-1;position:sticky;top:0;z-index:5;padding:8px 0;height:min(58vh,540px)}
+  .app{height:100%;max-width:100%}
+  .panel{overflow:visible;border-right:0}
+}
 .tune .hd2{grid-column:1/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tune .hd2 b{color:var(--txt);font-size:13px;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}
 .tune input[type=range]{width:100%;min-width:0;accent-color:var(--pri);margin:0}
@@ -74,7 +93,6 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 .ctl{display:flex;gap:4px;flex:none;margin-left:auto}
 .tg{flex:none;border:0;border-radius:10px;background:var(--card);color:var(--mute);font:inherit;font-size:11px;padding:6px 7px;cursor:pointer;white-space:nowrap}
 .tg.on{background:var(--pri);color:#fff}
-.exp{margin:8px 0 12px;background:#111;border-radius:22px;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .chips{display:flex;gap:6px;flex:1;flex-wrap:wrap}
 .chips button{border:0;border-radius:12px;background:#2b2b2b;color:var(--mute);font:inherit;font-size:13px;font-weight:600;padding:8px 11px;cursor:pointer}
 .chips button.on{background:#fff;color:#111}
@@ -84,6 +102,43 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 </style>
 </head>
 <body>
+<div class="shell">
+<aside class="panel" id="panel">
+  <h1>💬 한마디 방 에디터</h1>
+  <section class="sec">
+    <h2>인원 · 말풍선</h2>
+    <div class="opts">
+      <button class="sm" id="addp">＋ 인원 추가</button>
+      <button class="sm" id="addb">＋ 말풍선 추가</button>
+      <button class="sm" id="resetpos">말풍선 위치 초기화</button>
+    </div>
+  </section>
+    <section class="sec tune idle no-export" id="tune">
+  <div class="hd2"><b id="t_name"></b><button class="tg" id="t_tail">꼬리</button><button class="tg" id="t_dn">꼬리 아래</button><button class="tg" id="t_up">꼬리 위</button><button class="tg" id="t_del">말풍선 삭제</button><button class="tg" id="t_reset">초기화</button><button class="tg" id="t_close">선택 해제</button></div>
+    <span>기울기</span><input type="range" id="t_rot" min="-30" max="30" step="0.5"><output id="o_rot"></output>
+    <span>꼬리 위치</span><input type="range" id="t_tx" min="0" max="100" step="1"><output id="o_tx"></output>
+    <span>꼬리 크기</span><input type="range" id="t_ts" min="0.4" max="2" step="0.05"><output id="o_ts"></output>
+    <span>꼬리 휘어짐</span><input type="range" id="t_tk" min="-45" max="45" step="1"><output id="o_tk"></output>
+  </section>
+  <section class="sec">
+    <h2>방송 화면 이미지</h2>
+    <div class="opts">
+      <button class="sm" id="pick">🖼 이미지 넣기</button>
+      <button class="sm" id="clear" style="display:none">지우기</button>
+      <label><input type="checkbox" id="blurchk"> 흐리게</label>
+      <input type="file" id="file" accept="image/*" hidden>
+    </div>
+  </section>
+  <section class="sec">
+    <h2>PNG 저장</h2>
+    <div class="chips" id="chips">
+      <button data-r="1:1">1:1</button><button data-r="3:4" class="on">3:4</button><button data-r="4:5">4:5</button><button data-r="9:16">9:16</button><button data-r="16:9">16:9</button>
+    </div>
+    <button id="save">PNG 저장</button>
+    <div id="msg"></div>
+  </section>
+</aside>
+<main class="stage">
 <div class="app" id="app">
   <div class="main">
     <div class="bar"><button class="ib">⌄</button></div>
@@ -91,29 +146,8 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
     <div class="stream" id="stream"><div class="join">방송 보기</div></div>
   </div>
   <div class="list" id="list"></div>
-  <div class="exp no-export">
-    <div class="opts">
-      <button class="sm" id="addp">＋ 인원 추가</button>
-      <button class="sm" id="addb">＋ 말풍선 추가</button>
-      <button class="sm" id="pick">🖼 이미지 넣기</button>
-      <button class="sm" id="resetpos">말풍선 위치 초기화</button>
-      <button class="sm" id="clear" style="display:none">지우기</button>
-      <label><input type="checkbox" id="blurchk"> 흐리게</label>
-      <input type="file" id="file" accept="image/*" hidden>
-    </div>
-    <div class="tune no-export" id="tune" hidden>
-      <div class="hd2"><b id="t_name"></b><button class="tg" id="t_tail">꼬리</button><button class="tg" id="t_dn">꼬리 아래</button><button class="tg" id="t_up">꼬리 위</button><button class="tg" id="t_del">말풍선 삭제</button><button class="tg" id="t_reset">초기화</button><button class="tg" id="t_close">닫기</button></div>
-      <span>기울기</span><input type="range" id="t_rot" min="-30" max="30" step="0.5"><output id="o_rot"></output>
-      <span>꼬리 위치</span><input type="range" id="t_tx" min="0" max="100" step="1"><output id="o_tx"></output>
-      <span>꼬리 크기</span><input type="range" id="t_ts" min="0.4" max="2" step="0.05"><output id="o_ts"></output>
-      <span>꼬리 휘어짐</span><input type="range" id="t_tk" min="-45" max="45" step="1"><output id="o_tk"></output>
-    </div>
-    <div class="chips" id="chips">
-      <button data-r="1:1">1:1</button><button data-r="3:4" class="on">3:4</button><button data-r="4:5">4:5</button><button data-r="9:16">9:16</button><button data-r="16:9">16:9</button>
-    </div>
-    <button id="save">PNG 저장</button>
-    <div id="msg"></div>
-  </div>
+</div>
+</main>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -216,9 +250,7 @@ function addGuestRow(g){
 guests.forEach(addGuestRow);
 $('addp').onclick=()=>{
   const g={id:Date.now().toString(36),name:'',text:'',avatar:'',nb:true};
-  guests.push(g);const r=addGuestRow(g);saveGuests();render();
-  const l=$('list');l.scrollTop=l.scrollHeight;
-  r.querySelector('.nmw input').focus();
+  guests.push(g);addGuestRow(g);saveGuests();render();   // 스크롤·포커스 이동 없이 그 자리에서 추가
 };
 
 /* 말풍선 추가: 말풍선이 없는 사람에게 붙이고, 모두 있으면 새 사람+말풍선 */
@@ -233,10 +265,8 @@ $('addb').onclick=()=>{
     const g={id:Date.now().toString(36),name:'',text:'',avatar:'',nb:false};
     guests.push(g);target=addGuestRow(g);saveGuests();
   }
-  render();
-  const l=$('list');
-  if(target._key!=='me')l.scrollTop=l.scrollHeight;
-  requestAnimationFrame(()=>{select(target._key);const tx=target.querySelector('textarea');if(tx)tx.focus()});
+  render();place();
+  select(target._key);   // 스크롤 이동 없이 패널만 선택 상태로
 };
 
 /* 다른 접속자 행 */
@@ -370,12 +400,14 @@ window.addEventListener('resize',()=>fit());
 /* 선택한 말풍선 세부 조절 (기울기·꼬리) */
 let selKey=null;
 const T=$('tune');
+setIdle();
 const rowByKey=k=>[...$('list').children].find(r=>r._key===k);
 const fmt={rot:v=>(+v).toFixed(1)+'°',tx:v=>Math.round(v)+'%',ts:v=>Math.round(v*100)+'%',tk:v=>Math.round(v)+'°'};
+function setIdle(){T.classList.add('idle');$('t_name').textContent='말풍선을 눌러 선택하세요'}
 function syncTune(){
   const r=rowByKey(selKey),b=r&&r.querySelector('.bub'),e=b&&b._eff;
-  if(!e){T.hidden=true;return}
-  T.hidden=false;
+  if(!e){setIdle();return}
+  T.classList.remove('idle');
   $('t_name').textContent=(r.querySelector('.nm')?r.querySelector('.nm').textContent:(r.querySelector('.nmw input').value||'익명'))+' 말풍선';
   ['rot','tx','ts','tk'].forEach(k=>{$('t_'+k).value=e[k];$('o_'+k).textContent=fmt[k](e[k])});
   $('t_tail').classList.toggle('on',e.showTail);$('t_tail').textContent=e.showTail?'꼬리 켜짐':'꼬리 꺼짐';
@@ -387,7 +419,7 @@ function select(k){
   document.querySelectorAll('.bub.sel').forEach(x=>x.classList.remove('sel'));
   selKey=k;
   const r=k&&rowByKey(k);
-  if(!r){T.hidden=true;selKey=null;return}
+  if(!r){setIdle();selKey=null;return}
   r.querySelector('.bub').classList.add('sel');
   syncTune();
 }
@@ -411,7 +443,7 @@ $('t_del').onclick=()=>{
   select(null);render();
 };
 $('t_close').onclick=()=>select(null);
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('.bub,#tune,.exp'))select(null)});
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.bub,.panel'))select(null)});
 
 /* 말풍선 스티커처럼 드래그 */
 let drag=null;
@@ -454,16 +486,33 @@ $('resetpos').onclick=()=>{offs={};saveOffs();place()};
 
 /* 옵션 */
 let img=null,blurUrl=null;
+function blurPass(a,b,w,h,r,horiz){
+  const len=horiz?w:h,lines=horiz?h:w,stride=horiz?4:4*w,ls=horiz?4*w:4,div=2*r+1;
+  for(let l=0;l<lines;l++){
+    const base=l*ls;
+    for(let ch=0;ch<3;ch++){
+      let sum=0;
+      for(let k=-r;k<=r;k++)sum+=a[base+Math.min(len-1,Math.max(0,k))*stride+ch];
+      for(let i=0;i<len;i++){
+        b[base+i*stride+ch]=sum/div;
+        sum+=a[base+Math.min(len-1,i+r+1)*stride+ch]-a[base+Math.max(0,i-r)*stride+ch];
+      }
+    }
+  }
+}
 function makeBlur(im){
-  const w=Math.min(im.naturalWidth,900),h=Math.max(1,Math.round(w*im.naturalHeight/im.naturalWidth));
+  const sc=Math.min(1,720/im.naturalWidth);
+  const w=Math.max(2,Math.round(im.naturalWidth*sc)),h=Math.max(2,Math.round(im.naturalHeight*sc));
   const c=document.createElement('canvas');c.width=w;c.height=h;
   const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(im,0,0,w,h);
-  [12,8].forEach(d=>{
-    const sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(w/d));sm.height=Math.max(2,Math.round(h/d));
-    const sx=sm.getContext('2d');sx.imageSmoothingQuality='high';
-    sx.drawImage(c,0,0,sm.width,sm.height);x.drawImage(sm,0,0,w,h);
-  });
-  return c.toDataURL('image/jpeg',.9);
+  const id=x.getImageData(0,0,w,h),n=w*h*4;
+  let A=new Float32Array(n),B=new Float32Array(n);
+  for(let i=0;i<n;i++)A[i]=id.data[i];
+  const r=Math.max(2,Math.round(Math.min(w,h)*.05));
+  for(let k=0;k<3;k++){blurPass(A,B,w,h,r,true);blurPass(B,A,w,h,r,false)}   // 가로·세로 3회씩
+  for(let i=0;i<n;i+=4){id.data[i]=A[i];id.data[i+1]=A[i+1];id.data[i+2]=A[i+2];id.data[i+3]=255}
+  x.putImageData(id,0,0);
+  return c.toDataURL('image/jpeg',.94);
 }
 function applyBg(){
   const st=$('stream');
@@ -510,7 +559,11 @@ $('save').onclick=async()=>{
     const canvas=await html2canvas($('app'),{scale:2,backgroundColor:'#25262d',width:W,height:H,windowWidth:W,windowHeight:H,useCORS:true,logging:false,onclone:doc=>{
       const a=doc.getElementById('app');
       a.style.width=W+'px';a.style.height=H+'px';a.style.maxWidth='none';a.style.margin='0';
-      a.classList.add('exp-mode');
+      a.classList.add('exp-mode');a.style.maxHeight='none';
+      const sh=doc.querySelector('.shell'),pn=doc.getElementById('panel'),sg=doc.querySelector('.stage');
+      if(pn)pn.remove();
+      if(sh){sh.style.display='block';sh.style.height=H+'px'}
+      if(sg){sg.style.cssText='padding:0;display:block;height:'+H+'px;background:transparent;overflow:visible'}
       doc.documentElement.style.height=H+'px';doc.body.style.height=H+'px';
       doc.querySelectorAll('.no-export').forEach(x=>x.remove());
       doc.querySelectorAll('.bub.empty').forEach(x=>{const w=x.closest('.bw');if(w)w.style.display='none';else x.remove()});
