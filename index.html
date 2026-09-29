@@ -30,7 +30,8 @@ html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-
 .bar{padding:14px 0 0;display:flex;align-items:center;gap:10px}
 .rn{font-weight:700;font-size:16px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rninp{flex:1;min-width:0;border:0;border-radius:10px;background:var(--card);color:var(--txt);font:inherit;font-size:13px;padding:7px 11px;outline:0}
-.ib{width:38px;height:38px;border-radius:50%;background:#3a3c45;display:grid;place-items:center;font-size:15px;border:0;color:var(--txt)}
+.ib{width:36px;height:36px;flex:none;padding:0;border-radius:50%;background:#3a3c45;display:grid;place-items:center;border:0;cursor:pointer}
+.ib img{display:block;width:20px;height:20px;pointer-events:none}
 .lbl{color:var(--mute);font-size:14px;margin:14px 0 8px}
 .stream{aspect-ratio:16/9;border-radius:18px;background:linear-gradient(160deg,#e58fc0,#a56bd8);background-size:cover;background-position:center;display:grid;place-items:center}
 .join{background:#fff;color:#111;border-radius:24px;padding:12px 22px;font-weight:700;font-size:15px}
@@ -108,6 +109,12 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 /* 컨트롤 버튼: 평소엔 숨기고, 행에 마우스를 올리거나 탭/포커스할 때만 이름 위에 떠서 표시 */
 .row .ctl{display:none;z-index:8;background:#1f2026;padding:4px;border-radius:12px;box-shadow:0 4px 14px #0009}
 .row:hover .ctl,.row:focus-within .ctl,.row.act .ctl{display:flex}
+/* 아바타+닉네임 정렬: 왼쪽/오른쪽은 방송 화면 가장자리에 딱 맞춤 (오른쪽은 닉네임이 앞, 아바타가 끝) */
+.app[data-al=left] .row,.app[data-al=right] .row{padding-left:0;padding-right:0}
+.app[data-al=left] .row{justify-content:flex-start}
+.app[data-al=right] .row{justify-content:flex-end}
+.app[data-al=right] .nm,.app[data-al=right] .nmw{order:1}
+.app[data-al=right] .av{order:2}
 </style>
 </head>
 <body>
@@ -128,6 +135,12 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
     <button class="sm" id="streset">기본값</button>
   </div>
 </section>
+  <section class="sec">
+    <h2>아바타 · 닉네임 정렬</h2>
+    <div class="chips" id="alchips" style="margin-bottom:0">
+      <button data-a="left">왼쪽</button><button data-a="center" class="on">가운데</button><button data-a="right">오른쪽</button>
+    </div>
+  </section>
   <section class="sec">
     <h2>인원 · 말풍선</h2>
     <div class="opts">
@@ -184,7 +197,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 <div class="fit" id="fit"><div class="app" id="app">
   <div class="scin" id="scin">
     <div class="main">
-      <div class="bar"><button class="ib">⌄</button><span class="rn" id="rname" style="display:none"></span></div>
+      <div class="bar"><button class="ib" aria-label="접기"><img alt="" draggable="false" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 9.5l5.5 5.5 5.5-5.5' fill='none' stroke='%23f2f3f5' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"></button><span class="rn" id="rname" style="display:none"></span></div>
       <div class="lbl" id="stlabel"></div>
       <div class="stream" id="stream"><div class="join">방송 보기</div></div>
     </div>
@@ -373,7 +386,7 @@ function place(d){
     if(!b||!av||bw.style.display==='none')return;
     const key=r._key,st=sty[key]||{},first=r===r.parentNode.firstElementChild;
     b.style.marginLeft='0px';b.style.maxWidth='100%';
-    const avail=bw.clientWidth,w=b.offsetWidth,c=av.offsetLeft+av.offsetWidth/2-r.clientLeft-4;
+    const avail=bw.clientWidth,w=b.offsetWidth,c=av.offsetLeft+av.offsetWidth/2-bw.offsetLeft;
     const nmEl=r.querySelector('.nm'),nmIn=r.querySelector('.nmw input');
     const seed=[...((nmEl?nmEl.textContent:(nmIn?nmIn.value:''))||'익명')].reduce((x,ch)=>x+ch.charCodeAt(0),0);
     const autoRot=0,dx=[12,-4,18,6,-8,14][(seed>>1)%6];
@@ -513,6 +526,11 @@ $('t_del').onclick=()=>{
   select(null);render();
 };
 $('t_close').onclick=()=>select(null);
+document.addEventListener('pointerdown',e=>{
+  const r=e.target.closest('.row');
+  document.querySelectorAll('.row.act').forEach(x=>{if(x!==r)x.classList.remove('act')});
+  if(r)r.classList.add('act');
+});
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('.bub,.stk,.panel')){select(null);selectStk(null)}});
 
 /* ================= 스티커 (이미지) ================= */
@@ -673,6 +691,18 @@ $('stinput').oninput=e=>{stText=e.target.value;applySt()};
 $('streset').onclick=()=>{stText=ST_DEFAULT;$('stinput').value=stText;applySt()};
 applySt();
   
+/* 아바타·닉네임 정렬 (왼쪽/가운데/오른쪽) */
+let al='center';
+try{const v=localStorage.getItem('hm_al');if(v==='left'||v==='right'||v==='center')al=v}catch(e){}
+function applyAl(){
+  $('app').dataset.al=al;
+  [...$('alchips').children].forEach(x=>x.classList.toggle('on',x.dataset.a===al));
+  try{localStorage.setItem('hm_al',al)}catch(e){}
+  relayout();
+}
+$('alchips').onclick=e=>{const b=e.target.closest('button');if(!b)return;al=b.dataset.a;applyAl()};
+applyAl();
+
 /* 옵션 */
 let img=null,blurUrl=null;
 function blurPass(a,b,w,h,r,horiz){
