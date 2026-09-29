@@ -39,7 +39,9 @@ html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-
 .opts label{display:flex;align-items:center;gap:5px}
 .sm{border:0;border-radius:10px;background:var(--card);color:var(--txt);font:inherit;font-size:13px;padding:7px 11px;cursor:pointer}
 .list{margin-top:-22px;padding-top:4px;position:relative;z-index:2}
-.row{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;padding:4px 4px 12px;border-bottom:1px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;padding:4px 4px 12px}
+/* 구분선: 말풍선 유무·크기와 상관없이 항상 아바타 줄 바로 아래에 고정 (위치는 JS가 --ly 로 지정) */
+.row::after{content:"";position:absolute;left:0;right:0;top:var(--ly,60px);height:1px;background:var(--line);pointer-events:none}
 .av{flex:none;position:relative;width:44px;height:44px;border-radius:50%;background-size:cover;background-position:center;display:grid;place-items:center;font-weight:700;font-size:18px;color:#fff}
 .edit .av{cursor:pointer}
 .nm,.nmw{flex:0 1 auto;min-width:0;max-width:calc(100% - 60px);font-weight:600;font-size:16px;overflow:hidden}
@@ -54,7 +56,7 @@ html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-
 .grow>input,.grow>textarea{grid-area:1/1;font:inherit;line-height:inherit;color:inherit;background:none;border:0;outline:0;padding:0;margin:0;width:100%;min-width:0;resize:none;overflow:hidden}
 /* 입력칸 자체의 기본 너비(약 20자)가 말풍선 길이를 밀어내지 않도록: 글자 크기에 맞춰서만 늘어남 */
 .bub.grow>textarea{width:0!important;min-width:100%!important}
-.bub{min-width:44px}
+.bub{min-width:44px;z-index:3}
 .bw{flex:0 0 100%;display:flex;margin:0 0 18px}
 .bub{position:relative;background:#fff;color:#111;border-radius:20px;padding:9px 16px;margin-left:4px;max-width:calc(100% - 4px);box-shadow:0 3px 0 #0003,0 7px 12px #0006;font-size:14px;line-height:1.35;word-break:break-word;white-space:pre-wrap}
 .bub textarea::placeholder{color:#999}
@@ -417,6 +419,7 @@ function place(d){
   d=d||document;
   [...d.getElementById('list').children].forEach(r=>{
     const bw=r.querySelector('.bw'),b=bw&&bw.querySelector('.bub'),av=r.querySelector('.av'),t=b&&b.querySelector('.btail');
+    if(av)r.style.setProperty('--ly',(av.offsetTop+av.offsetHeight+10)+'px');
     if(!b||!av||bw.style.display==='none')return;
     const key=r._key,st=sty[key]||{},first=r===r.parentNode.firstElementChild;
     b.style.marginLeft='0px';b.style.maxWidth='100%';
