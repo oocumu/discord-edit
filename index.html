@@ -82,11 +82,29 @@ html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-
 .panel .chips{margin-bottom:10px}
 #save{width:100%}
 .stage{min-width:0;min-height:0;display:flex;justify-content:center;align-items:center;padding:20px;overflow:hidden;background:#000}
+/* 사용법 안내 칸 (다른 패널 칸과 같은 스타일, 접었다 펼 수 있음) */
+.guide summary{list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--mute);display:flex;align-items:center;justify-content:space-between}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::after{content:"";width:7px;height:7px;margin-right:3px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .15s}
+.guide[open] summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.guide ol{margin:10px 0 0;padding:0 0 0 18px;font-size:12px;line-height:1.6;color:var(--txt);opacity:.88}
+.guide li+li{margin-top:6px}
+.guide li b{color:#fff;font-weight:600}
+.guide .mo{display:none}
+/* 패널 헤더 + 모바일 전용 열기/닫기 버튼 (데스크톱에서는 숨김) */
+.pnhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pntoggle,.pnclose{display:none}
 @media (max-width:860px){
-  html,body{height:auto}
-  .shell{display:flex;flex-direction:column;height:auto}
-  .stage{order:-1;position:sticky;top:0;z-index:5;padding:8px 0;height:min(58vh,540px)}
-  .panel{overflow:visible;border-right:0}
+  /* 모바일: 미리보기가 화면 전체를 쓰고, 에디터는 왼쪽에서 밀려 나오는 서랍 */
+  html,body{height:100%}
+  .shell{display:block;height:100%}
+  .stage{height:100%;height:100dvh;padding:12px 0}
+  .panel{position:fixed;left:0;top:0;bottom:0;width:min(330px,88vw);z-index:900;border-right:0;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));overscroll-behavior:contain;transform:translateX(-104%);transition:transform .25s ease,visibility 0s linear .25s;visibility:hidden}
+  body.pn-open .panel{transform:none;visibility:visible;transition:transform .25s ease,visibility 0s;box-shadow:10px 0 34px #000c}
+  .pntoggle{display:flex;align-items:center;gap:6px;position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:800;border:0;border-radius:999px;background:var(--pri);color:#fff;font:inherit;font-size:14px;font-weight:700;padding:11px 16px;box-shadow:0 6px 18px #0009;cursor:pointer}
+  body.pn-open .pntoggle{display:none}
+  .pnclose{display:block;border:0;border-radius:10px;background:var(--card);color:var(--txt);font:inherit;font-size:12px;font-weight:600;padding:7px 11px;cursor:pointer}
+  .guide .mo{display:list-item}
 }
 .tune .hd2{grid-column:1/-1;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tune .hd2 b{color:var(--txt);font-size:13px;margin-right:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}
@@ -169,9 +187,18 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 </style>
 </head>
 <body>
+<button class="pntoggle" id="pntoggle" type="button" aria-label="에디터 열기">에디터</button>
 <div class="shell">
 <aside class="panel" id="panel">
-  <h1>디스코드 에디터</h1>
+  <div class="pnhead"><h1>디스코드 에디터</h1><button class="pnclose" id="pnclose" type="button">닫기</button></div>
+  <details class="sec guide" open>
+    <summary>사용법 안내</summary>
+    <ol>
+      <li>프로필 칸을 누르면 이미지를 지정할 수 있습니다.</li>
+      <li>말풍선과 스티커는 드래그해서 움직일 수 있습니다.</li>
+      <li>대부분의 꾸밈 요소들은 왼쪽 컨트롤 패널 창이 아닌, 미리보기(오른쪽 패널)에서 조작하셔야 합니다! 이에 따라 모바일 환경보다는 PC 환경에서 사용하시는 걸 추천드립니다.</li>
+    </ol>
+  </details>
   <section class="sec">
   <h2>방 이름</h2>
   <div class="opts">
@@ -597,7 +624,7 @@ document.addEventListener('pointerdown',e=>{
   document.querySelectorAll('.row.act').forEach(x=>{if(x!==r)x.classList.remove('act')});
   if(r)r.classList.add('act');
 });
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('.bub,.stk,.panel')){select(null);selectStk(null)}});
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.bub,.stk,.panel,.pntoggle')){select(null);selectStk(null)}});
 
 /* ================= 스티커 (이미지) ================= */
 let stickers=[],selStk=null,stkTm;
@@ -1099,6 +1126,18 @@ $('save').onclick=async()=>{
   }
   finally{btn.disabled=false}
 };
+
+/* 모바일: 에디터(왼쪽 패널) 서랍 열기/닫기 */
+function pnSet(open){
+  document.body.classList.toggle('pn-open',open);
+  setTimeout(relayout,280);
+}
+$('pntoggle').onclick=()=>pnSet(true);
+$('pnclose').onclick=()=>pnSet(false);
+document.addEventListener('pointerdown',e=>{
+  // 서랍이 열려 있을 때 패널 밖(미리보기)을 누르면 닫음 → 남은 화면에서 말풍선/스티커를 바로 선택할 수 있음
+  if(document.body.classList.contains('pn-open')&&!e.target.closest('.panel,.pntoggle,#notice,#cropper'))pnSet(false);
+});
 
 /* 안내창: 저장하지 않으므로 사이트를 새로 열 때마다 표시됨 */
 (function(){
