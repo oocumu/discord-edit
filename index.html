@@ -19,7 +19,7 @@ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:en
 html,body{height:100%;margin:0;background:#0d0e11;color:var(--txt);font-family:-apple-system,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
 .fit{position:relative;flex:none}
 .app{position:absolute;left:0;top:0;transform-origin:0 0;background:var(--sheet);overflow:hidden}
-.scin{position:absolute;top:0;padding:0 18px 28px;box-sizing:border-box}
+.scin{position:absolute;top:0;padding:0 16px 28px;box-sizing:border-box}   /* 400-32=368 → 방송 화면 높이 207px(정수)라 저장 때 아래 가장자리에 반 픽셀 줄이 안 생김 */
 .main{display:flex;flex-direction:column}
 .sticks{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 .stk{position:absolute;pointer-events:auto;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
@@ -101,6 +101,10 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 .tm b{color:#111;font-weight:700}
 .bub.typ .tm{display:block}
 .bub.typ .bt,.bub.typ textarea{display:none}
+/* 저장할 때 입력칸(textarea/input) 대신 쓰는 일반 글자 요소 (입력칸은 글자가 아래로 밀리거나 잘려서 그려짐) */
+.bt2{grid-area:1/1;white-space:pre-wrap;word-break:break-word;font:inherit;line-height:inherit;color:inherit}
+.nm2{grid-area:1/1;white-space:pre;overflow:hidden;font:inherit;line-height:inherit}
+.bub.typ .bt2{display:none}
 .bub.typ.grow>.sz{display:none}
 .ctl{display:flex;gap:4px;flex:none;margin-left:auto}
 .tg{flex:none;border:0;border-radius:10px;background:var(--card);color:var(--mute);font:inherit;font-size:11px;padding:6px 7px;cursor:pointer;white-space:nowrap}
@@ -244,7 +248,7 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 <div class="fit" id="fit"><div class="app" id="app">
   <div class="scin" id="scin">
     <div class="main">
-      <div class="bar"><button class="ib" aria-label="접기"><img alt="" draggable="false" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 9.5l5.5 5.5 5.5-5.5' fill='none' stroke='%23f2f3f5' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"></button><span class="rn" id="rname" style="display:none"></span></div>
+      <div class="bar"><button class="ib" aria-label="접기"><img alt="" draggable="false" src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M6.5%209.5l5.5%205.5%205.5-5.5%22%20fill%3D%22none%22%20stroke%3D%22%23f2f3f5%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E"></button><span class="rn" id="rname" style="display:none"></span></div>
       <div class="lbl" id="stlabel"></div>
       <div class="stream" id="stream"><div class="join">방송 보기</div></div>
     </div>
@@ -900,8 +904,10 @@ $('cok').onclick=()=>{
     const m=Math.max(ow,oh);if(m>1200){ow=Math.max(2,Math.round(ow*1200/m));oh=Math.max(2,Math.round(oh*1200/m))}
   }else{
     const s=S.s0*S.z;sw=S.gw/s;sh=S.gh/s;sx=S.nw/2-S.cx/s-sw/2;sy=S.nh/2-S.cy/s-sh/2;
-    if(S.circ){ow=oh=160}else{ow=Math.max(2,Math.round(Math.min(1920,sw)));oh=Math.max(2,Math.round(ow*9/16))}
+    if(S.circ){ow=oh=256}else{ow=Math.max(2,Math.round(Math.min(1920,sw)));oh=Math.max(2,Math.round(ow*9/16))}
   }
+  sw=Math.min(sw,S.nw);sh=Math.min(sh,S.nh);
+  sx=Math.max(0,Math.min(S.nw-sw,sx));sy=Math.max(0,Math.min(S.nh-sh,sy));   // 소수점 오차로 원본 밖을 읽어 가장자리가 비는 것 방지
   const c=document.createElement('canvas');c.width=ow;c.height=oh;
   const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(S.im,sx,sy,sw,sh,0,0,ow,oh);
   const url=(S.circ||S.type==='image/jpeg')?c.toDataURL('image/jpeg',.9):c.toDataURL('image/png');
@@ -932,8 +938,8 @@ function makeBlur(im){
   const id=x.getImageData(0,0,w,h),n=w*h*4;
   let A=new Float32Array(n),B=new Float32Array(n);
   for(let i=0;i<n;i++)A[i]=id.data[i];
-  const r=Math.max(2,Math.round(Math.min(w,h)*.025));
-  for(let k=0;k<2;k++){blurPass(A,B,w,h,r,true);blurPass(B,A,w,h,r,false)}   // 가로·세로 3회씩
+  const r=Math.max(3,Math.round(Math.min(w,h)*.04));
+  for(let k=0;k<3;k++){blurPass(A,B,w,h,r,true);blurPass(B,A,w,h,r,false)}   // 가로·세로 3회씩
   for(let i=0;i<n;i+=4){id.data[i]=A[i];id.data[i+1]=A[i+1];id.data[i+2]=A[i+2];id.data[i+3]=255}
   x.putImageData(id,0,0);
   return c.toDataURL('image/jpeg',.94);
@@ -986,12 +992,41 @@ async function saveBlob(blob,filename){
   a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),15000);
 }
+/* 저장용: 큰 이미지를 실제 출력 크기에 맞춰 고품질로 미리 줄여 둠 (그대로 두면 계단/깨짐이 생김) */
+function scaleImg(src,tw,th){
+  return new Promise(res=>{
+    const im=new Image();
+    im.onload=()=>{
+      try{
+        tw=Math.max(1,Math.round(tw));th=Math.max(1,Math.round(th));
+        if(im.naturalWidth<=tw&&im.naturalHeight<=th){res(src);return}
+        let cur=im,cw=im.naturalWidth,ch=im.naturalHeight;
+        while(cw/2>=tw&&ch/2>=th){   // 절반씩 여러 번 줄여야 품질이 좋음
+          const c=document.createElement('canvas');cw=Math.round(cw/2);ch=Math.round(ch/2);c.width=cw;c.height=ch;
+          const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(cur,0,0,cw,ch);cur=c;
+        }
+        const c=document.createElement('canvas');c.width=tw;c.height=th;
+        const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(cur,0,0,tw,th);
+        res(c.toDataURL('image/png'));
+      }catch(e){res(src)}
+    };
+    im.onerror=()=>res(src);
+    im.src=src;
+  });
+}
+const bgUrlOf=el=>{const m=/^url\("?(.*?)"?\)$/.exec(el.style.backgroundImage||'');return m?m[1]:''};
 $('save').onclick=async()=>{
   const msg=$('msg'),btn=$('save');
   if(!window.html2canvas){msg.textContent='이미지 변환 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요';return}
   btn.disabled=true;msg.textContent='이미지 만드는 중…';
   try{
     if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+    const avEls=[...document.querySelectorAll('#list .av')],stEl=$('stream'),stkEls=[...document.querySelectorAll('#sticks .stk')];
+    const [avR,bgR,stkR]=await Promise.all([
+      Promise.all(avEls.map(el=>{const u=bgUrlOf(el);return u?scaleImg(u,el.offsetWidth*outScale,el.offsetHeight*outScale):Promise.resolve('')})),
+      (()=>{const u=bgUrlOf(stEl);return u?scaleImg(u,stEl.offsetWidth*outScale,stEl.offsetHeight*outScale):Promise.resolve('')})(),
+      Promise.all(stkEls.map(el=>{const im=el.querySelector('img');return im?scaleImg(im.src,el.offsetWidth*outScale,el.offsetHeight*outScale):Promise.resolve('')}))
+    ]);
     const canvas=await html2canvas($('app'),{scale:outScale,backgroundColor:'#25262d',useCORS:true,logging:false,onclone:doc=>{
       // 패널을 뺀 뒤 미리보기 화면만 왼쪽 위에 두고, 화면과 같은 크기·같은 스크롤 위치로 그린다
       const pn=doc.getElementById('panel'),sh=doc.querySelector('.shell'),sg=doc.getElementById('stage'),bx=doc.getElementById('fit');
@@ -1007,7 +1042,23 @@ $('save').onclick=async()=>{
       const cp=doc.getElementById('cropper');if(cp)cp.remove();
       doc.querySelectorAll('.bub.empty').forEach(x=>{const w=x.closest('.bw');if(w)w.style.display='none';else x.remove()});
       doc.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
-      doc.querySelectorAll('.nmw input').forEach(i=>{if(!i.value.trim())i.value='익명'});
+      // 입력칸은 저장할 때 글자가 아래로 밀리거나 잘리므로, 같은 글자를 일반 요소로 바꿔서 그림
+      const oTA=[...document.querySelectorAll('.bub textarea')];
+      [...doc.querySelectorAll('.bub textarea')].forEach((t,i)=>{
+        const s=doc.createElement('span');s.className='bt2';s.textContent=oTA[i]?oTA[i].value:t.value;t.replaceWith(s);
+      });
+      const oIN=[...document.querySelectorAll('.nmw input')];
+      [...doc.querySelectorAll('.nmw input')].forEach((t,i)=>{
+        const s=doc.createElement('span');s.className='nm2';
+        s.textContent=((oIN[i]?oIN[i].value:t.value)||'').trim()||'익명';
+        const z=t.parentNode.querySelector('.sz');if(z)z.textContent=s.textContent+' ';
+        t.replaceWith(s);
+      });
+      // 아바타·방송 화면·스티커는 출력 크기에 맞춰 미리 줄여 둔 고품질 이미지로 교체
+      [...doc.querySelectorAll('#list .av')].forEach((el,i)=>{if(avR[i]){el.style.backgroundImage='url("'+avR[i]+'")';el.style.backgroundSize='100% 100%'}});
+      const sb=doc.getElementById('stream');
+      if(sb&&bgR){sb.style.backgroundImage='url("'+bgR+'")';sb.style.backgroundSize='100% 100%'}
+      [...doc.querySelectorAll('#sticks .stk img')].forEach((im,i)=>{if(stkR[i])im.src=stkR[i]});
       padFirst(doc);
       fit(doc);
     }});
