@@ -130,6 +130,32 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
 .nbox p a{color:#fff;font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .nbtn{border:0;border-radius:6px;background:#fff;color:var(--pri);font:inherit;font-size:15px;font-weight:600;padding:12px 30px;cursor:pointer}
 .nbtn:hover{background:#f2f3ff}
+/* 이미지 자르기 창 */
+#cropper{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.72)}
+#cropper[hidden]{display:none}
+.cbox{width:min(360px,100%);background:#1f2026;border-radius:16px;padding:16px;box-shadow:0 14px 44px #000b;color:var(--txt)}
+.cbox h3{margin:0 0 12px;font-size:16px}
+.cv{position:relative;margin:0 auto;overflow:hidden;background:#000;border-radius:10px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.cv:active{cursor:grabbing}
+.cv img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;-webkit-user-drag:none}
+.cg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:2px solid #fff;box-shadow:0 0 0 999px rgba(0,0,0,.62);pointer-events:none}
+.cg.circ{border-radius:50%}
+/* 스티커용 자유 자르기: 네모 위치·크기는 JS가 직접 지정, 모서리/가장자리 핸들로 비율 조절 */
+.cg.free{transform:none;pointer-events:auto;cursor:move}
+.cg .hd{display:none;position:absolute;width:26px;height:26px;touch-action:none}
+.cg .hd::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;background:#fff;border-radius:3px;box-shadow:0 0 0 1px #0007}
+.cg.free .hd{display:block}
+.hd[data-h=nw]{left:-13px;top:-13px;cursor:nwse-resize}
+.hd[data-h=ne]{right:-13px;top:-13px;cursor:nesw-resize}
+.hd[data-h=sw]{left:-13px;bottom:-13px;cursor:nesw-resize}
+.hd[data-h=se]{right:-13px;bottom:-13px;cursor:nwse-resize}
+.hd[data-h=n]{left:50%;top:-13px;margin-left:-13px;cursor:ns-resize}
+.hd[data-h=s]{left:50%;bottom:-13px;margin-left:-13px;cursor:ns-resize}
+.hd[data-h=w]{left:-13px;top:50%;margin-top:-13px;cursor:ew-resize}
+.hd[data-h=e]{right:-13px;top:50%;margin-top:-13px;cursor:ew-resize}
+.chint{margin:10px 0 8px;font-size:12px;color:var(--mute);text-align:center}
+#czoom{width:100%;accent-color:var(--pri);margin:0}
+.cbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 /* 아바타+닉네임 정렬: 왼쪽/오른쪽은 방송 화면 가장자리에 딱 맞춤 (오른쪽은 닉네임이 앞, 아바타가 끝) */
 .app[data-al=left] .row,.app[data-al=right] .row{padding-left:0;padding-right:0}
 .app[data-al=left] .row{justify-content:flex-start}
@@ -243,6 +269,15 @@ body.dragging,body.dragging *{user-select:none;-webkit-user-select:none;cursor:g
     <button class="nbtn" id="nok" type="button">확인했어요</button>
   </div>
 </div>
+<div id="cropper" hidden role="dialog" aria-modal="true" aria-labelledby="ctitle">
+  <div class="cbox">
+    <h3 id="ctitle">이미지 자르기</h3>
+    <div class="cv" id="cv"><img id="cimg" alt="" draggable="false"><div class="cg" id="cg"><i class="hd" data-h="nw"></i><i class="hd" data-h="n"></i><i class="hd" data-h="ne"></i><i class="hd" data-h="w"></i><i class="hd" data-h="e"></i><i class="hd" data-h="sw"></i><i class="hd" data-h="s"></i><i class="hd" data-h="se"></i></div></div>
+    <div class="chint" id="chint">드래그로 위치를 옮기고, 슬라이더·휠·두 손가락으로 확대/축소해요</div>
+    <input type="range" id="czoom" min="1" max="4" step="0.01" value="1" aria-label="확대">
+    <div class="cbtns"><button class="sm" id="ccancel" type="button">취소</button><button class="nbtn" id="cok" type="button">자르기 완료</button></div>
+  </div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const rt=window.claude&&typeof window.claude.use==='function'?window.claude:null;   // Claude 안에서만 존재 (GitHub Pages에서는 null)
@@ -269,16 +304,7 @@ function setAv(el,name,avatar){
   el.style.backgroundColor=avatar?'':color(name);
   el.querySelector('.ini').textContent=avatar?'':[...name][0];
 }
-function cropAvatar(f,cb){
-  const r=new FileReader();
-  r.onload=()=>{const im=new Image();im.onload=()=>{
-    const s=96,c=document.createElement('canvas');c.width=c.height=s;
-    const m=Math.min(im.naturalWidth,im.naturalHeight),sx=(im.naturalWidth-m)/2,sy=(im.naturalHeight-m)/2;
-    c.getContext('2d').drawImage(im,sx,sy,m,m,0,0,s,s);
-    cb(c.toDataURL('image/jpeg',.82));
-  };im.src=r.result};
-  r.readAsDataURL(f);
-}
+function cropAvatar(f,cb){openCrop(f,'circle',cb)}
 
 function setV(el,v){el.dataset.v=v;const z=el.querySelector(':scope>.sz');if(z)z.textContent=v+' '}
 /* 직접 편집 가능한 행 (나 / 추가한 인원) */
@@ -424,11 +450,10 @@ function place(d){
     const key=r._key,st=sty[key]||{},first=r===r.parentNode.firstElementChild;
     b.style.marginLeft='0px';b.style.maxWidth='100%';
     const avail=bw.clientWidth,w=b.offsetWidth,c=av.offsetLeft+av.offsetWidth/2-bw.offsetLeft;
-    const nmEl=r.querySelector('.nm'),nmIn=r.querySelector('.nmw input');
-    const seed=[...((nmEl?nmEl.textContent:(nmIn?nmIn.value:''))||'익명')].reduce((x,ch)=>x+ch.charCodeAt(0),0);
-    const autoRot=0,dx=[12,-4,18,6,-8,14][(seed>>1)%6];
-    let ml=Math.round(c-22+dx);
-    ml=Math.max(4,Math.min(ml,avail-w));
+    /* 기본 위치: 말풍선 왼쪽 끝을 아바타 왼쪽 끝에 맞춤 (이름과 무관, 사용자가 드래그했을 때만 달라짐) */
+    const autoRot=0;
+    let ml=Math.round(c-22);
+    ml=Math.max(0,Math.min(ml,avail-w));
     b.style.marginLeft=ml+'px';
     b.style.maxWidth='calc(100% - '+ml+'px)';
     const autoTl=Math.max(8,Math.min(w-36,Math.round(c-ml-14)));
@@ -611,21 +636,23 @@ function selectStk(id){
   renderStk();syncStk();
 }
 $('addstk').onclick=()=>$('stkfile').click();
-$('stkfile').onchange=e=>{[...e.target.files].forEach(addSticker);e.target.value=''};
-function addSticker(file){
-  const fr=new FileReader();
-  fr.onload=()=>{const im=new Image();im.onload=()=>{
+$('stkfile').onchange=e=>{
+  const q=[...e.target.files];e.target.value='';
+  const next=()=>{const f=q.shift();if(!f)return;openCrop(f,'free',url=>{addStickerUrl(url,f.type);next()},next)};
+  next();
+};
+function addStickerUrl(url,type){
+  (()=>{const im=new Image();im.onload=()=>{
     const m=480,sc=Math.min(1,m/Math.max(im.naturalWidth,im.naturalHeight));
     const w=Math.max(1,Math.round(im.naturalWidth*sc)),h=Math.max(1,Math.round(im.naturalHeight*sc));
     const c=document.createElement('canvas');c.width=w;c.height=h;
     const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(im,0,0,w,h);
-    const src=file.type==='image/jpeg'?c.toDataURL('image/jpeg',.9):c.toDataURL('image/png');
+    const src=type==='image/jpeg'?c.toDataURL('image/jpeg',.9):c.toDataURL('image/png');
     const asp=im.naturalHeight/im.naturalWidth;
     const s={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),src,
       x:.5+(Math.random()-.5)*.16,y:.5+(Math.random()-.5)*.16,w:asp>1.3?.2:.3,rot:0,flip:false,op:1};
     stickers.push(s);renderStk();selectStk(s.id);saveStk();
-  };im.src=fr.result};
-  fr.readAsDataURL(file);
+  };im.src=url})();
 }
 [['s_w','w',v=>v/100,'so_w',v=>Math.round(v)+'%'],['s_rot','rot',v=>+v,'so_rot',v=>Math.round(v)+'°'],['s_op','op',v=>v/100,'so_op',v=>Math.round(v)+'%']].forEach(([id,key,conv,oid,f])=>{
   $(id).oninput=e=>{const s=stkOf(selStk);if(!s)return;s[key]=conv(+e.target.value);$(oid).textContent=f(e.target.value);const el=stkEl(s.id);if(el)stkStyle(s,el);saveStk()};
@@ -634,12 +661,25 @@ $('s_flip').onclick=()=>{const s=stkOf(selStk);if(!s)return;s.flip=!s.flip;rende
 $('s_front').onclick=()=>{const s=stkOf(selStk);if(!s)return;stickers=stickers.filter(x=>x!==s).concat(s);const el=stkEl(s.id);if(el)$('sticks').appendChild(el);saveStk()};
 $('s_dup').onclick=()=>{const s=stkOf(selStk);if(!s)return;const n=Object.assign({},s,{id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),x:Math.min(.95,s.x+.05),y:Math.min(.95,s.y+.05)});stickers.push(n);renderStk();selectStk(n.id);saveStk()};
 $('s_del').onclick=()=>{if(!selStk)return;stickers=stickers.filter(x=>x.id!==selStk);selStk=null;renderStk();syncStk();saveStk()};
+/* Delete / Backspace 로 선택한 스티커·말풍선 삭제 (글자를 입력하는 중에는 동작하지 않음) */
+window.addEventListener('keydown',e=>{
+  if(e.key!=='Delete'&&e.key!=='Backspace')return;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const t=e.target,tag=t&&t.tagName;
+  const typing=tag==='TEXTAREA'||(tag==='INPUT'&&!['range','checkbox','radio','button','file'].includes(t.type))||(t&&t.isContentEditable);
+  if(typing)return;
+  const nt=$('notice');
+  if((CR&&CR.S)||(nt&&!nt.hidden))return;
+  if(selStk){e.preventDefault();$('s_del').click()}
+  else if(selKey){e.preventDefault();$('t_del').click()}
+});
 /* 스티커 드래그 */
 let sdrag=null;
 $('sticks').addEventListener('pointerdown',e=>{
   const el=e.target.closest('.stk');if(!el||e.button>0)return;
   const s=stkOf(el.dataset.id);if(!s)return;
   e.preventDefault();
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   selectStk(s.id);
   const R=$('app').getBoundingClientRect();
   sdrag={s,el,sx:e.clientX,sy:e.clientY,x:s.x,y:s.y,W:R.width,H:R.height,id:e.pointerId,on:false};
@@ -740,6 +780,134 @@ function applyAl(){
 $('alchips').onclick=e=>{const b=e.target.closest('button');if(!b)return;al=b.dataset.a;applyAl()};
 applyAl();
 
+/* ================= 이미지 자르기 (아바타: 원형 가이드 / 방송 화면: 16:9 가이드) ================= */
+const CR={S:null};
+const crPtrs=new Map();
+let crDrag=null,crPinch=null,crFree=null;
+function openCrop(file,shape,cb,onCancel){
+  const fr=new FileReader();
+  fr.onload=()=>{const im=new Image();im.onload=()=>startCrop(im,file.type,shape,cb,onCancel);im.src=fr.result};
+  fr.readAsDataURL(file);
+}
+function startCrop(im,type,shape,cb,onCancel){
+  const free=shape==='free',circ=shape==='circle';
+  const nw=im.naturalWidth,nh=im.naturalHeight;
+  const cv=$('cv'),cg=$('cg'),ci=$('cimg');
+  cg.classList.toggle('circ',circ);cg.classList.toggle('free',free);
+  $('czoom').style.display=free?'none':'';
+  $('chint').textContent=free?'네모의 모서리·가장자리를 끌어 원하는 비율로 자르고, 안쪽을 끌어 위치를 옮겨요':'드래그로 위치를 옮기고, 슬라이더·휠·두 손가락으로 확대/축소해요';
+  $('ctitle').textContent=free?'스티커 자르기':(circ?'아바타 자르기':'방송 화면 자르기');
+  crPtrs.clear();crDrag=null;crPinch=null;crFree=null;
+  ci.src=im.src;
+  if(free){
+    const MW=Math.max(200,Math.min(328,window.innerWidth-64)),MH=Math.max(200,Math.min(380,window.innerHeight-250));
+    const f=Math.min(MW/nw,MH/nh),W=Math.round(nw*f),H=Math.round(nh*f);
+    cv.style.width=W+'px';cv.style.height=H+'px';
+    ci.style.width=W+'px';ci.style.height=H+'px';ci.style.transform='translate(-50%,-50%)';
+    const px=Math.round(W*.06),py=Math.round(H*.06);
+    CR.S={free:true,im,type,cb,onCancel,nw,nh,W,H,r:{x:px,y:py,w:W-px*2,h:H-py*2}};
+    crFreeApply();
+  }else{
+    const VW=Math.max(200,Math.min(328,window.innerWidth-64));
+    const VH=circ?VW:Math.round(VW*.75);
+    const gw=circ?VW-40:VW-24,gh=circ?gw:gw*9/16;
+    cv.style.width=VW+'px';cv.style.height=VH+'px';
+    cg.style.left='';cg.style.top='';cg.style.width=gw+'px';cg.style.height=gh+'px';
+    CR.S={im,type,circ,cb,onCancel,nw,nh,gw,gh,s0:Math.max(gw/nw,gh/nh),z:1,cx:0,cy:0};
+    $('czoom').value=1;
+    crApply();
+  }
+  $('cropper').hidden=false;
+  try{$('cok').focus({preventScroll:true})}catch(e){}
+}
+function crApply(){
+  const S=CR.S;if(!S)return;
+  const s=S.s0*S.z,W=S.nw*s,H=S.nh*s;
+  const mx=Math.max(0,(W-S.gw)/2),my=Math.max(0,(H-S.gh)/2);   // 가이드 안쪽은 항상 이미지로 채워지게 제한
+  S.cx=Math.max(-mx,Math.min(mx,S.cx));S.cy=Math.max(-my,Math.min(my,S.cy));
+  const ci=$('cimg');
+  ci.style.width=W+'px';ci.style.height=H+'px';
+  ci.style.transform='translate(-50%,-50%) translate('+S.cx+'px,'+S.cy+'px)';
+}
+function crFreeApply(){
+  const S=CR.S,g=$('cg'),r=S.r;
+  g.style.left=r.x+'px';g.style.top=r.y+'px';g.style.width=r.w+'px';g.style.height=r.h+'px';
+}
+function crFreeMove(e){
+  const S=CR.S,d=crFree,r0=d.r,dx=e.clientX-d.sx,dy=e.clientY-d.sy,MIN=24,W=S.W,H=S.H;
+  let x=r0.x,y=r0.y,w=r0.w,h=r0.h;
+  if(d.mode==='move'){
+    x=Math.max(0,Math.min(W-w,r0.x+dx));y=Math.max(0,Math.min(H-h,r0.y+dy));
+  }else{
+    if(d.mode.includes('e'))w=Math.max(MIN,Math.min(W-r0.x,r0.w+dx));
+    if(d.mode.includes('s'))h=Math.max(MIN,Math.min(H-r0.y,r0.h+dy));
+    if(d.mode.includes('w')){const nx=Math.max(0,Math.min(r0.x+r0.w-MIN,r0.x+dx));w=r0.w-(nx-r0.x);x=nx}
+    if(d.mode.includes('n')){const ny=Math.max(0,Math.min(r0.y+r0.h-MIN,r0.y+dy));h=r0.h-(ny-r0.y);y=ny}
+  }
+  S.r={x,y,w,h};crFreeApply();
+}
+function crZoom(z){
+  const S=CR.S;if(!S)return;
+  z=Math.max(1,Math.min(4,z));
+  const k=z/S.z;S.cx*=k;S.cy*=k;S.z=z;
+  $('czoom').value=z;crApply();
+}
+function crClose(){$('cropper').hidden=true;CR.S=null;crPtrs.clear();crDrag=null;crPinch=null}
+const crDist=()=>{const p=[...crPtrs.values()];return Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1};
+$('cv').addEventListener('pointerdown',e=>{
+  const S=CR.S;if(!S)return;
+  e.preventDefault();
+  if(S.free){
+    const h=e.target.dataset&&e.target.dataset.h,mode=h||(e.target.id==='cg'?'move':null);
+    if(!mode)return;
+    try{$('cv').setPointerCapture(e.pointerId)}catch(_){}
+    crFree={mode,id:e.pointerId,sx:e.clientX,sy:e.clientY,r:Object.assign({},S.r)};
+    return;
+  }
+  try{$('cv').setPointerCapture(e.pointerId)}catch(_){}
+  crPtrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(crPtrs.size===1){crDrag={x:e.clientX,y:e.clientY,cx:S.cx,cy:S.cy};crPinch=null}
+  else if(crPtrs.size===2){crDrag=null;crPinch={d:crDist(),z:S.z}}
+});
+$('cv').addEventListener('pointermove',e=>{
+  const S=CR.S;if(!S)return;
+  if(S.free){if(crFree&&crFree.id===e.pointerId)crFreeMove(e);return}
+  if(!crPtrs.has(e.pointerId))return;
+  crPtrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(crPtrs.size===1&&crDrag){S.cx=crDrag.cx+(e.clientX-crDrag.x);S.cy=crDrag.cy+(e.clientY-crDrag.y);crApply()}
+  else if(crPtrs.size===2&&crPinch){crZoom(crPinch.z*crDist()/crPinch.d)}
+});
+function crUp(e){
+  const S=CR.S;crPtrs.delete(e.pointerId);
+  if(crFree&&crFree.id===e.pointerId)crFree=null;
+  if(!S||S.free)return;
+  if(crPtrs.size===1){const p=[...crPtrs.values()][0];crDrag={x:p.x,y:p.y,cx:S.cx,cy:S.cy};crPinch=null}
+  else if(crPtrs.size===0){crDrag=null;crPinch=null}
+}
+$('cv').addEventListener('pointerup',crUp);
+$('cv').addEventListener('pointercancel',crUp);
+$('cv').addEventListener('wheel',e=>{if(!CR.S||CR.S.free)return;e.preventDefault();crZoom(CR.S.z*(e.deltaY<0?1.08:1/1.08))},{passive:false});
+$('czoom').oninput=e=>crZoom(+e.target.value);
+function crCancel(){const S=CR.S;crClose();if(S&&S.onCancel)S.onCancel()}
+$('ccancel').onclick=crCancel;
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&CR.S)crCancel()});
+$('cok').onclick=()=>{
+  const S=CR.S;if(!S)return;
+  let sx,sy,sw,sh,ow,oh;
+  if(S.free){
+    const k=S.nw/S.W;sx=S.r.x*k;sy=S.r.y*k;sw=S.r.w*k;sh=S.r.h*k;
+    ow=Math.max(2,Math.round(sw));oh=Math.max(2,Math.round(sh));
+    const m=Math.max(ow,oh);if(m>1200){ow=Math.max(2,Math.round(ow*1200/m));oh=Math.max(2,Math.round(oh*1200/m))}
+  }else{
+    const s=S.s0*S.z;sw=S.gw/s;sh=S.gh/s;sx=S.nw/2-S.cx/s-sw/2;sy=S.nh/2-S.cy/s-sh/2;
+    if(S.circ){ow=oh=160}else{ow=Math.max(2,Math.round(Math.min(1920,sw)));oh=Math.max(2,Math.round(ow*9/16))}
+  }
+  const c=document.createElement('canvas');c.width=ow;c.height=oh;
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(S.im,sx,sy,sw,sh,0,0,ow,oh);
+  const url=(S.circ||S.type==='image/jpeg')?c.toDataURL('image/jpeg',.9):c.toDataURL('image/png');
+  const cb=S.cb;crClose();cb(url);
+};
+
 /* 옵션 */
 let img=null,blurUrl=null;
 function blurPass(a,b,w,h,r,horiz){
@@ -770,20 +938,32 @@ function makeBlur(im){
   x.putImageData(id,0,0);
   return c.toDataURL('image/jpeg',.94);
 }
+/* 방송 칸(16:9)을 빈틈없이 채우도록 비율은 유지한 채 확대하고, 넘치는 부분은 가운데 기준으로 잘라냄 */
+function coverCrop(im,type){
+  const AR=16/9,sw=im.naturalWidth,sh=im.naturalHeight;
+  let cw,ch;
+  if(sw/sh>AR){ch=sh;cw=sh*AR}else{cw=sw;ch=sw/AR}
+  const sx=(sw-cw)/2,sy=(sh-ch)/2;
+  const ow=Math.max(2,Math.round(Math.min(1920,cw))),oh=Math.max(2,Math.round(ow/AR));
+  const c=document.createElement('canvas');c.width=ow;c.height=oh;
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(im,sx,sy,cw,ch,0,0,ow,oh);
+  return type==='image/jpeg'?c.toDataURL('image/jpeg',.92):c.toDataURL('image/png');
+}
 function applyBg(){
   const st=$('stream');
   $('clear').style.display=img?'':'none';
-  if(!img){st.style.backgroundImage='';return}
+  if(!img){st.style.backgroundImage='';st.style.backgroundSize='';return}
   let url=img.src;
   if($('blurchk').checked){if(!blurUrl)blurUrl=makeBlur(img);url=blurUrl}
   st.style.backgroundImage='url("'+url+'")';
+  st.style.backgroundSize='100% 100%';   // 이미 16:9로 맞춰 놨으므로 늘어남/찌그러짐 없이 꽉 참
 }
 $('pick').onclick=()=>$('file').click();
 $('file').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{const im=new Image();im.onload=()=>{img=im;blurUrl=null;applyBg()};im.src=r.result};
-  r.readAsDataURL(f);e.target.value='';
+  openCrop(f,'rect',url=>{const ci=new Image();ci.onload=()=>{img=ci;blurUrl=null;applyBg()};ci.src=url});
+  e.target.value='';
 };
 $('clear').onclick=()=>{img=null;blurUrl=null;applyBg()};
 $('blurchk').onchange=applyBg;
@@ -824,6 +1004,7 @@ $('save').onclick=async()=>{
       if(bx){bx.style.cssText='position:static;width:auto;height:auto'}
       doc.querySelectorAll('.no-export').forEach(x=>x.remove());
       const nt=doc.getElementById('notice');if(nt)nt.remove();
+      const cp=doc.getElementById('cropper');if(cp)cp.remove();
       doc.querySelectorAll('.bub.empty').forEach(x=>{const w=x.closest('.bw');if(w)w.style.display='none';else x.remove()});
       doc.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel'));
       doc.querySelectorAll('.nmw input').forEach(i=>{if(!i.value.trim())i.value='익명'});
